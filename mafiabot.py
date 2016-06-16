@@ -129,7 +129,7 @@ class Mafia(Group):
         Group.__init__(self, role='mafia',
                              description='Kill a person during the night.',
                              night='Please type /msg %s kill <player> to kill a player.',
-                             priority = 7)
+                             priority = 17)
         if gang:
             self.name = gang
         else:
@@ -175,7 +175,7 @@ class Werewolf(Group):
                              role='werewolf',
                              description='Kill a person during the night.',
                              night='Please type /msg %s kill <player> to kill a player.',
-                             priority = 5)
+                             priority = 15)
 
     def check_kill(self,game,nick,args,irc):
         if len(args) == 0:
@@ -241,7 +241,7 @@ class Safeguard(Group):
                              role='safeguard',
                              description='Protect a person during the night to prevent nonlethal bad things from happening to them.',
                              night='Please type /msg %s protect <player> to protect that player from nonlethal bad things.',
-                             priority = 1)
+                             priority = 5)
 
     def check_protect(self,game,nick,args,irc):
         if len(args) == 0:
@@ -267,7 +267,7 @@ class Bodyguard(Group):
                              role='bodyguard',
                              description='Protect a person during the night to prevent him or her from being killed.',
                              night='Please type /msg %s protect <player> to prevent that player from getting killed.',
-                             priority = 4)
+                             priority = 10)
 
     def check_protect(self,game,nick,args,irc):
         if len(args) == 0:
@@ -285,6 +285,33 @@ class Bodyguard(Group):
         if not self.check_hooked(irc):
             target = self.target
             target.protected = self
+
+class Omniguard(Group):
+    def __init__(self):
+        Group.__init__(self, name='omniguard',
+                             team='good people',
+                             role='omniguard',
+                             description='Protect a person during the night to prevent him or her from anything bad.',
+                             night='Please type /msg %s protect <player> to prevent that player from anything bad.',
+                             priority = 5)
+
+    def check_protect(self,game,nick,args,irc):
+        if len(args) == 0:
+            irc.notice(nick,"Please protect someone.")
+        elif args[0] in map(lambda x:x.nick, self.members):
+            irc.notice(nick,"You cannot protect yourself.")
+        elif game.players.has_key(args[0]):
+            self.do('protect',game.players[args[0]])
+            for player in self.members:
+                irc.notice(player.nick,"You have chosen to protect " + args[0] + ".")
+        else:
+            irc.notice(nick,args[0] + " is not playing or has been killed.")
+
+    def execute_protect(self,game,target,irc):
+        if not self.check_hooked(irc):
+            target = self.target
+            target.protected = self
+            target.safeguarded = self
 
 class Hooker(Group):
     def __init__(self):
@@ -324,7 +351,7 @@ class Witch(Group):
                              role='witch',
                              description='Hex a person so they cannot use their role or vote until you die.',
                              night='Please type /msg %s hex <player> to hex them, disabling their nightly action and vote until you die.',
-                             priority = 2)
+                             priority = 6)
 
 
     def check_hex(self,game,nick,args,irc):
@@ -358,7 +385,7 @@ class Kidnapper(Group):
                              role='kidnapper',
                              description='You are a perverted kidnapper who works alone. Kidnap a person during the night so he or she cannot do anything this night or talk during the day. You win if everyone else is dead.',
                              night='Please type /msg %s kidnap <player> to kidnap that player, preventing their night action and silencing them the following day.',
-                             priority = 2)
+                             priority = 7)
         self.last_target = None
 
 
@@ -509,7 +536,7 @@ class Tracker(Group):
                              role='tracker',
                              description='Track a person during the night to know what they target.',
                              night='Please type /msg %s track <player> to see who that player is.',
-                             priority = 40)
+                             priority = 30)
         self.falsename = None
 
     def check_track(self,game,nick,args,irc):
@@ -692,7 +719,7 @@ class Rogue(Group):
                              role='rogue',
                              description='Stalk a person during the night. If that person kills you then you are given a secret "second" life.',
                              night='Please type /msg %s stalk <player> to stalk a player during the night. If that player kills you, you will be able to resurrect!',
-                             priority = 4)
+                             priority = 10)
         self.stalked = None
         self.correct = 0
         self.activated = 0
@@ -733,7 +760,7 @@ class Greensorcerer(Group):
                              role='Green Sorcerer',
                              description='Enchant a person during the night. If an enchanted player dies, they will be able to come back from the dead as a villager aligned with the good people.',
                              night='Please type /msg %s enchant <player> to enchant a player during the night. If an enchanted player dies, they will be able to come back from the dead as a villager aligned with the good people.',
-                             priority = 4)
+                             priority = 10)
 
     def check_enchant(self,game,nick,args,irc):
             if len(args) == 0:
@@ -836,7 +863,7 @@ class Bluesorcerer(Group):
                              role='blue sorcerer',
                              description='You convert players to your team during the night. You are allied with the color blue',
                              night='Please type /msg %s convert <player> to convert a player during the night.',
-                             priority = 3)
+                             priority = 10)
 
     
 
@@ -870,7 +897,7 @@ class Twin(Mafia):
                              role='twin',
                              description='As of now you are allied with the good people and you know that your brother is also on their side.',
                              night=None,
-                             priority = 6)
+                             priority = 16)
         self.activated = 0
 
     def activate_lynch(self,game,irc):
@@ -912,7 +939,7 @@ class Joker(Mafia):
                              role='joker',
                              description='Vote to lynch people during the day.',
                              night=None,
-                             priority = 5)
+                             priority = 15)
         self.activated = 0
 
     def activate(self,game,irc):
@@ -1003,7 +1030,7 @@ class Supervillain(Group):
                              role='supervillain',
                              description='You are working to conquer this puny village. Kill a person during the night. Vote counts double.',
                              night='Please type msg %s kill <player> to kill that player.',
-                             priority = 15)
+                             priority = 19)
 			
     def check_kill(self,game,nick,args,irc):
         if len(args) == 0:
@@ -1490,7 +1517,7 @@ class TestBot(SingleServerIRCBot):
         roles = []
         #roles += {4: [Joker()], 2: [Ghost()]}.get(randint(0, 15), [])
         #roles += [Hooker() if randint(0, 1) else Martyr()]
-        roles += [Bodyguard()]
+        roles += [Omniguard()]
         roles += [Inspector()]
         roles += [Werewolf()]
         roles += [devil() if randint(0, 1) else Witch()]
