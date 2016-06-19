@@ -994,6 +994,34 @@ class Silencer(Group):
             game.silenced = target
             game.silence = 0
             irc.notice(target.nick, "You have been silenced for this day. If you speak up during the day you will be autokilled.")
+
+class Slanderer(Group):
+    def __init__(self):
+        Group.__init__(self, name='slanderer',
+                             team='slanderer',
+                             role='slanderer',
+                             description='Slander a person during the night to make their vote count for -1 during the day. Your vote counts for 0.',
+                             night='Please type /msg %s slander <player> to silence that player.',
+                             priority = 8)
+
+    def check_slander(self,game,nick,args,irc):
+        if len(args) == 0:
+            irc.notice(nick,"Please slander someone.")
+        elif game.players.has_key(args[0]):
+            self.do('slander',game.players[args[0]])
+            for player in self.members:
+                irc.notice(player.nick,"You have chosen to slander " + args[0] + ".")
+        else:
+            irc.notice(nick,args[0] + " is not playing or has been killed.")
+
+    def execute_slander(self,game,target,irc):
+        if not self.check_hooked(irc):
+            target = self.target
+            if target.safeguarded:
+                for player in self.members:
+                    irc.notice(player.nick,"Your target was protected.")
+                return
+            game.slandered = target
 			
 class Villagesilencer(Group):
     def __init__(self):
@@ -1094,6 +1122,14 @@ def Mayor():
                  night=None,
                  priority = 9)
 
+def Arsehole():
+    return Group(name='arsehole',
+                 team='arsehole',
+                 role='arsehole',
+                 description='vote counts as -2!',
+                 night=None,
+                 priority = 9)
+
 def bpv():
     return Group(name='bulletproof vest',
                  team='good people',
@@ -1137,6 +1173,7 @@ class TestBot(SingleServerIRCBot):
         self.silencer = 0
         self.silenced = 0
         self.silence = 0
+        self.slandered = 0
         self.jesterwin = 0
         global witchalive
         witchalive = 1
@@ -1299,6 +1336,7 @@ class TestBot(SingleServerIRCBot):
         self.silencer = 0
         self.silenced = 0
         self.silence = 0
+        self.slandered = 0
         self.jesterwin = 0
         global witchalive
         witchalive = 1
@@ -1571,8 +1609,8 @@ class TestBot(SingleServerIRCBot):
         #roles += [Werewolf()]	
         #roles += [Kidnapper()]
         #roles += [Mayor()]
-        roles += [Missionary()]
-        roles += [Werewolf()]
+        roles += [Mayor()]
+        roles += [Slanderer()]
         tempplayers = len(roles)
         roles += [Villager() for x in xrange(0,nplayers-tempplayers)]
         return roles
@@ -1926,16 +1964,24 @@ class TestBot(SingleServerIRCBot):
         self.silenced = 0
         tally = defaultdict(lambda: 0)
         for nick,player in self.players.items():
+            tally[player.nick] += 0
             if player.vote:
                 global witchalive
-                if player.transformed and witchalive: 
+                if player.nick == self.slandered.nick:
+                    tally[player.vote] -= 1
+                elif player.transformed and witchalive:
                     tally[player.vote] += 0
+                elif player.group.role == 'slanderer'
+                    tally[player.vote] += 0
+                elif player.group.role == 'arsehole':
+                    tally[player.vote] -= 2
                 elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
                     tally[player.vote] += 2
                 else:
                     tally[player.vote] += 1
             player.reset()
-        max = 0
+        self.slandered = 0
+        max = -10
         for nick,votes in tally.items():
             if max < votes:
                 max = votes
