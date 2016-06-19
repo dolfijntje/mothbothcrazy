@@ -1001,7 +1001,7 @@ class Slanderer(Group):
                              team='slanderer',
                              role='slanderer',
                              description='Slander a person during the night to make their vote count for -1 during the day. Your vote counts for 0.',
-                             night='Please type /msg %s slander <player> to silence that player.',
+                             night='Please type /msg %s slander <player> to make their vote count for -1 during the day.',
                              priority = 8)
 
     def check_slander(self,game,nick,args,irc):
