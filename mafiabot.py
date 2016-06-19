@@ -1022,6 +1022,7 @@ class Slanderer(Group):
                     irc.notice(player.nick,"Your target was protected.")
                 return
             game.slandered = target
+            game.slander = 1
 			
 class Villagesilencer(Group):
     def __init__(self):
@@ -1174,6 +1175,7 @@ class TestBot(SingleServerIRCBot):
         self.silenced = 0
         self.silence = 0
         self.slandered = 0
+        self.slander = 0
         self.jesterwin = 0
         global witchalive
         witchalive = 1
@@ -1337,6 +1339,7 @@ class TestBot(SingleServerIRCBot):
         self.silenced = 0
         self.silence = 0
         self.slandered = 0
+        self.slander = 0
         self.jesterwin = 0
         global witchalive
         witchalive = 1
@@ -1967,20 +1970,33 @@ class TestBot(SingleServerIRCBot):
             tally[player.nick] += 0
             if player.vote:
                 global witchalive
-                if player.nick == self.slandered.nick:
-                    tally[player.vote] -= 1
-                elif player.transformed and witchalive:
-                    tally[player.vote] += 0
-                elif player.group.role == 'slanderer'
-                    tally[player.vote] += 0
-                elif player.group.role == 'arsehole':
-                    tally[player.vote] -= 2
-                elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
-                    tally[player.vote] += 2
+                if self.slander == 1:
+                    if player.nick == self.slandered.nick:
+                        tally[player.vote] -= 1
+                    elif player.transformed and witchalive:
+                        tally[player.vote] += 0
+                    elif player.group.role == 'slanderer':
+                        tally[player.vote] += 0
+                    elif player.group.role == 'arsehole':
+                        tally[player.vote] -= 2
+                    elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
+                        tally[player.vote] += 2
+                    else:
+                        tally[player.vote] += 1
                 else:
-                    tally[player.vote] += 1
+                    if player.transformed and witchalive:
+                        tally[player.vote] += 0
+                    elif player.group.role == 'slanderer':
+                        tally[player.vote] += 0
+                    elif player.group.role == 'arsehole':
+                        tally[player.vote] -= 2
+                    elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
+                        tally[player.vote] += 2
+                    else:
+                        tally[player.vote] += 1
             player.reset()
         self.slandered = 0
+        self.slander = 0
         max = -10
         for nick,votes in tally.items():
             if max < votes:
