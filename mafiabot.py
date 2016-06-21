@@ -1485,7 +1485,7 @@ class TestBot(SingleServerIRCBot):
     def setup1(self, nplayers):
         if nplayers < 7 or nplayers > 10: return None
         roles = []
-        roles += {4: [Joker()], 2: [Ghost()]}.get(randint(0, 15), [])
+        #roles += {4: [Joker()], 2: [Ghost()]}.get(randint(0, 15), [])
         roles += [Hooker()]
         roles += [Bodyguard()]
         roles += [Werewolf()]
