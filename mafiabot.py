@@ -787,7 +787,7 @@ class Phoenix(Group):
                              team='good people',
                              role='phoenix',
                              description='When you get lynched, you can come back to life by typing !resurrect.',
-                             night='You have no night action.',
+                             night='You have no night action, so please type /msg %s idle',
                              priority = 4)
         self.correct = 0
 
@@ -1022,7 +1022,49 @@ class Slanderer(Group):
                     irc.notice(player.nick,"Your target was protected.")
                 return
             game.slandered = target
-            game.slander = 1
+
+class Journalist(Group):
+    def __init__(self):
+        Group.__init__(self, name='journalist',
+                             team='good people',
+                             role='journalist',
+                             description='Slander a person during the night to make their vote count for -1 during the day, or promote a person during the night to make their vote count for 3 during the day.',
+                             night='Please type /msg %s <slander or promote> <player> to make their vote count for -1 or 3 respectively.',
+                             priority = 60)
+
+    def check_slander(self,game,nick,args,irc):
+        if len(args) == 0:
+            irc.notice(nick,"Please slander or promote someone.")
+        elif args[0] in map(lambda x:x.nick, self.members):
+            irc.notice(nick,"You cannot slander yourself.")
+        elif game.players.has_key(args[0]):
+            self.do('slander',game.players[args[0]])
+            for player in self.members:
+                irc.notice(player.nick,"You have chosen to slander " + args[0] + ".")
+        else:
+            irc.notice(nick,args[0] + " is not playing or has been killed.")
+
+    def execute_slander(self,game,target,irc):
+        if not self.check_hooked(irc):
+            target = self.target
+            game.slandered = target
+
+    def check_promote(self,game,nick,args,irc):
+        if len(args) == 0:
+            irc.notice(nick,"Please slander or promote someone.")
+        elif args[0] in map(lambda x:x.nick, self.members):
+            irc.notice(nick,"You cannot promote yourself.")
+        elif game.players.has_key(args[0]):
+            self.do('promote',game.players[args[0]])
+            for player in self.members:
+                irc.notice(player.nick,"You have chosen to promote " + args[0] + ".")
+        else:
+            irc.notice(nick,args[0] + " is not playing or has been killed.")
+
+    def execute_promote(self,game,target,irc):
+        if not self.check_hooked(irc):
+            target = self.target
+            game.promoted = target
 			
 class Villagesilencer(Group):
     def __init__(self):
@@ -1175,7 +1217,7 @@ class TestBot(SingleServerIRCBot):
         self.silenced = 0
         self.silence = 0
         self.slandered = 0
-        self.slander = 0
+        self.promoted = 0
         self.jesterwin = 0
         global witchalive
         witchalive = 1
@@ -1339,7 +1381,7 @@ class TestBot(SingleServerIRCBot):
         self.silenced = 0
         self.silence = 0
         self.slandered = 0
-        self.slander = 0
+        self.promoted = 0
         self.jesterwin = 0
         global witchalive
         witchalive = 1
@@ -1970,33 +2012,23 @@ class TestBot(SingleServerIRCBot):
             tally[player.nick] += 0
             if player.vote:
                 global witchalive
-                if self.slander == 1:
-                    if player.nick == self.slandered.nick:
-                        tally[player.vote] -= 1
-                    elif player.transformed and witchalive:
-                        tally[player.vote] += 0
-                    elif player.group.role == 'slanderer':
-                        tally[player.vote] += 0
-                    elif player.group.role == 'arsehole':
-                        tally[player.vote] -= 2
-                    elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
-                        tally[player.vote] += 2
-                    else:
-                        tally[player.vote] += 1
+                if player == self.promoted:
+                    tally[player.vote] += 3
+                elif player == self.slandered:
+                    tally[player.vote] -= 1
+                elif player.transformed and witchalive:
+                    tally[player.vote] += 0
+                elif player.group.role == 'slanderer':
+                    tally[player.vote] += 0
+                elif player.group.role == 'arsehole':
+                    tally[player.vote] -= 2
+                elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
+                    tally[player.vote] += 2
                 else:
-                    if player.transformed and witchalive:
-                        tally[player.vote] += 0
-                    elif player.group.role == 'slanderer':
-                        tally[player.vote] += 0
-                    elif player.group.role == 'arsehole':
-                        tally[player.vote] -= 2
-                    elif player.group.role == 'mayor' or player.group.role == 'devil' or player.group.role == 'supervillain':
-                        tally[player.vote] += 2
-                    else:
-                        tally[player.vote] += 1
+                    tally[player.vote] += 1
             player.reset()
         self.slandered = 0
-        self.slander = 0
+        self.promoted = 0
         max = -10
         for nick,votes in tally.items():
             if max < votes:
