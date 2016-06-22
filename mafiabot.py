@@ -1045,7 +1045,7 @@ class Journalist(Group):
             irc.notice(nick,"Please slander or promote someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot slander yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('slander',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to slander " + args[0] + ".")
@@ -1062,7 +1062,7 @@ class Journalist(Group):
             irc.notice(nick,"Please slander or promote someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot promote yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('promote',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to promote " + args[0] + ".")
