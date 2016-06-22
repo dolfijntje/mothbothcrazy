@@ -25,7 +25,11 @@ write simpler bots.
 """
 
 import sys
-from UserDict import UserDict
+try:
+	from UserDict import UserDict
+except ImportError:
+	from collections import UserDict
+	
 
 from irclib import SimpleIRCClient
 from irclib import nm_to_n, irc_lower, all_events

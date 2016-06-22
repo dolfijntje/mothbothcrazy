@@ -9,8 +9,16 @@ from threading import Timer
 from copy import copy
 from collections import defaultdict
 import subprocess
-import urllib2
+import sys
+PY3=sys.version_info > (3,)
+import traceback
+if(not PY3):
+	import urllib2 #this is not currently used, but is kept in. Will break in Python 3, if this module is ever actually used it will need to use the Python 3 version which is split across several modules.
 
+try:
+    xrange
+except NameError:
+    xrange = range
 # mafia - work in a team, they can kill somebody or corrupt the narrator
 # inspector - asks to discover the identity of a player (and on which side he is), gets wrong clues if the narrator was corrupted
 # hooker - sleeps with somebody, that person cannot do anything during the night, if the mafia kills the client the hooker dies too, one turn after the act the client has AIDS and dies a turn later if he is not cured
@@ -35,7 +43,7 @@ import urllib2
 # mole/fallguy obv.
 # johnny tightlips: silencer. DONE
 
-
+#most roles added by internet (pinkmoth) to my knowledge. conversion to Python 3 by penguin344
 
 
 
@@ -86,7 +94,7 @@ class Group:
         self.target = target
 
     def execute(self,game,irc):
-        if self.members and len(filter(lambda p:not p.dead, self.members)) != 0 and self.action:
+        if self.members and len(list(filter(lambda p:not p.dead, self.members))) != 0 and self.action:
             if self.action != 'idle':
                 getattr(self,'execute_'+self.action)(game,self.target,irc)
             self.targetted = self.target
@@ -141,7 +149,7 @@ class Mafia(Group):
     def check_kill(self,game,nick,args,irc):
         if len(args) == 0:
             irc.notice(nick,"Please kill someone.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('kill',game.players[args[0]])
             self.killer=nick
             for player in self.members:
@@ -180,7 +188,7 @@ class Werewolf(Group):
     def check_kill(self,game,nick,args,irc):
         if len(args) == 0:
             irc.notice(nick,"Please kill someone.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('kill',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to kill " + args[0] + ".")
@@ -248,7 +256,7 @@ class Safeguard(Group):
             irc.notice(nick,"Please protect someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot protect yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('protect',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to protect " + args[0] + ".")
@@ -274,7 +282,7 @@ class Bodyguard(Group):
             irc.notice(nick,"Please protect someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot protect yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('protect',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to protect " + args[0] + ".")
@@ -300,7 +308,7 @@ class Omniguard(Group):
             irc.notice(nick,"Please protect someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot protect yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('protect',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to protect " + args[0] + ".")
@@ -331,7 +339,7 @@ class Hooker(Group):
             irc.notice(nick,"You cannot fuck yourself.")
         elif args[0] == self.last_target:
             irc.notice(nick,"You fucked this person last time. Please pick another target.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('fuck',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to fuck " + args[0] + ".")
@@ -359,7 +367,7 @@ class Witch(Group):
             irc.notice(nick,"Please hex someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot hex yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('hex',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to hex " + args[0] + ".")
@@ -396,7 +404,7 @@ class Kidnapper(Group):
             irc.notice(nick,"You cannot kidnap yourself.")
         elif args[0] == self.last_target:
             irc.notice(nick,"You kidnap this person last time. Please pick another target.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('kidnap',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to kidnap " + args[0] + ".")
@@ -434,7 +442,7 @@ class Martyr(Group):
             irc.notice(nick,"You cannot distract yourself.")
         elif args[0] == self.last_target:
             irc.notice(nick,"You distract this person last time. Please pick another target.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('distract',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to distract " + args[0] + ".")
@@ -482,7 +490,7 @@ class Ghost(Group):
                 irc.notice(nick,"You cannot spook yourself.")
             elif args[0] == self.last_target:
                 irc.notice(nick,"You spooked this person last time. Please pick another target.")
-            elif game.players.has_key(args[0]):
+            elif args[0] in game.players:
                 self.do('spook',game.players[args[0]])
                 for player in self.members:
                     irc.notice(player.nick,"You have chosen to spook " + args[0] + ".")
@@ -512,7 +520,7 @@ class Inspector(Group):
             irc.notice(nick,"Please inspect someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot inspect yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('inspect',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to inspect " + args[0] + ".")
@@ -544,7 +552,7 @@ class Tracker(Group):
             irc.notice(nick,"Please track someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot track yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('track',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to track " + args[0] + ".")
@@ -556,7 +564,7 @@ class Tracker(Group):
             target = self.target
             for player in self.members:
                 try:
-                    print target
+                    print(target)
                     irc.notice(player.nick,target.nick + " is targeting: " + target.group.targetted.nick + ".")
                     break
                 except AttributeError:
@@ -576,7 +584,7 @@ class Sheriff(Group):
             irc.notice(nick,"Please check someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot check yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('check',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to check " + args[0] + ".")
@@ -606,7 +614,7 @@ class Cop(Group):
             irc.notice(nick,"Please check someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot check yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('check',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to check " + args[0] + ".")
@@ -636,7 +644,7 @@ class Madcop(Group):
             irc.notice(nick,"Please check someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot check yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('check',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to check " + args[0] + ".")
@@ -666,7 +674,7 @@ class Paranoid(Group):
             irc.notice(nick,"Please check someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot check yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('check',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to check " + args[0] + ".")
@@ -696,7 +704,7 @@ class Naive(Group):
             irc.notice(nick,"Please check someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot check yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('check',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to check " + args[0] + ".")
@@ -737,7 +745,7 @@ class Rogue(Group):
                 irc.notice(nick,"Please stalk someone.")
             elif args[0] in map(lambda x:x.nick, self.members):
                 irc.notice(nick,"You cannot stalk yourself.")
-            elif game.players.has_key(args[0]):
+            elif args[0] in game.players:
                 self.do('stalk',game.players[args[0]])
                 for player in self.members:
                     irc.notice(player.nick,"You have chosen to stalk " + args[0] + ".")
@@ -767,7 +775,7 @@ class Greensorcerer(Group):
                 irc.notice(nick,"Please enchant someone.")
             elif args[0] in map(lambda x:x.nick, self.members):
                 irc.notice(nick,"You cannot enchant yourself.")
-            elif game.players.has_key(args[0]):
+            elif args[0] in game.players:
                 self.do('enchant',game.players[args[0]])
                 for player in self.members:
                     irc.notice(player.nick,"You have chosen to enchant " + args[0] + ".")
@@ -807,7 +815,7 @@ class Missionary(Group):
             irc.notice(nick,"Please convert someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot convert yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('convert',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to convert " + args[0] + ".")
@@ -838,7 +846,7 @@ class Redsorcerer(Group):
             irc.notice(nick,"Please convert someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot convert yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('convert',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to convert " + args[0] + ".")
@@ -872,7 +880,7 @@ class Bluesorcerer(Group):
             irc.notice(nick,"Please convert someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot convert yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('convert',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to convert " + args[0] + ".")
@@ -977,7 +985,7 @@ class Silencer(Group):
             irc.notice(nick,"Please silence someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot silence yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('protect',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to silence " + args[0] + ".")
@@ -1007,7 +1015,7 @@ class Slanderer(Group):
     def check_slander(self,game,nick,args,irc):
         if len(args) == 0:
             irc.notice(nick,"Please slander someone.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('slander',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to slander " + args[0] + ".")
@@ -1038,7 +1046,7 @@ class Villagesilencer(Group):
             irc.notice(nick,"Please silence someone.")
         elif args[0] in map(lambda x:x.nick, self.members):
             irc.notice(nick,"You cannot silence yourself.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('protect',game.players[args[0]])
             for player in self.members:
                 irc.notice(player.nick,"You have chosen to silence " + args[0] + ".")
@@ -1064,7 +1072,7 @@ class Supervillain(Group):
     def check_kill(self,game,nick,args,irc):
         if len(args) == 0:
             irc.notice(nick,"Please kill someone.")
-        elif game.players.has_key(args[0]):
+        elif args[0] in game.players:
             self.do('kill',game.players[args[0]])
             self.killer=nick
             for player in self.members:
@@ -1267,14 +1275,14 @@ class TestBot(SingleServerIRCBot):
         try:
             nick = nm_to_n(e.source()).lower()
             if not self.channels[self.channel].has_user(nick):
-                for key in self.channels[self.channel].userdict.keys():
+                for key in list(self.channels[self.channel].userdict.keys()):
                     if key[0] in ["%","+","~","@","&"]:
                         key = key[1:]
                     key = key.lower()
                     self.channels[self.channel].userdict[key]=1
             line = e.arguments()[0].lower().split(" ")
             line[0] = line[0].replace('!','')
-            print "calling: ", nick, " -- ", line[0], " -- ", line[1:]
+            print ("calling: ", nick, " -- ", line[0], " -- ", line[1:])
             # print (self.channels[self.channel].userdict, nick, self.channels[self.channel].has_user(nick))
             if not self.channels[self.channel].has_user(nick):
                 c.notice(nick,"Please join the channel, THEN try pm'ing the bot. If you are just trying to fuck around, then suck my balls.")
@@ -1356,7 +1364,8 @@ class TestBot(SingleServerIRCBot):
             order = []
             roles = self.setup1(10)
             order = copy(roles)
-            order.sort(lambda x, y: x.priority.__cmp__(y.priority))
+            #order.sort(lambda x, y: x.priority.__cmp__(y.priority))
+            order.sort(key=lambda x: x.priority)
             x = [x.role for x in order]
             self.say(irc, "The roles are: " + ', '.join(x))
         elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
@@ -1373,13 +1382,13 @@ class TestBot(SingleServerIRCBot):
     def do_registering(self,nick,cmd,args,irc):
         nick=Nick(nick)
         if cmd == 'join':
-            if self.players.has_key(nick):
+            if nick in self.players:
                 irc.notice(nick, "You already joined!")
             else:
                 self.players[nick] = Player(nick)
                 self.say(irc, nick + " has joined the game!")
         elif cmd == 'mafia':
-            if self.players.has_key(nick):
+            if nick in self.players:
                 irc.notice(nick, "The game has already been started and looks like you are already in it!")
             else:
                 irc.notice(nick, "The game has already been started.")
@@ -1413,13 +1422,13 @@ class TestBot(SingleServerIRCBot):
         for nick,player in players.items():
             if len(player.group.members) > 1:
                 irc.notice(nick,"You are: " + player.group.name + ". " + player.group.description +
-                                " Your partner(s) is/are: " + nick_list(filter(lambda x:x!=nick,map(lambda x:x.nick, player.group.members)), " "))
+                                " Your partner(s) is/are: " + nick_list(list(filter(lambda x:x!=nick,map(lambda x:x.nick, player.group.members))), " "))
                 if self.silencer and self.silencer.team == player.group.team:
                     irc.notice(nick,"You also have a silencer working with your team, he is: " + self.silencer.nick)
             elif player.group.role == 'silencer':
                 for nick2,player2 in players.items():
                     if player2.group.team == player.group.team and player != player2:
-                        irc.notice(nick, "You are: " + player.group.name + ". " + player.group.description + " Your partners are: "  + nick_list(filter(lambda x:x!=nick,map(lambda x:x.nick, player2.group.members)))," ")
+                        irc.notice(nick, "You are: " + player.group.name + ". " + player.group.description + " Your partners are: "  + nick_list(list(filter(lambda x:x!=nick,map(lambda x:x.nick, player2.group.members))))," ")
                         break
             elif player.group.role == 'devil':
                 irc.notice(nick,"You are: " + player.group.name + ", " + player.group.description +
@@ -1432,7 +1441,8 @@ class TestBot(SingleServerIRCBot):
                 irc.notice(nick,"You are: " + player.group.name + ". " + player.group.description + ". You know that " + friend + " is also a villager.")
             else:
                 irc.notice(nick,"You are: " + player.group.name + ". " + player.group.description)
-        self.order.sort(lambda x, y: x.priority.__cmp__(y.priority))
+        #self.order.sort(lambda x, y: x.priority.__cmp__(y.priority))
+        self.order.sort(key=lambda x: x.priority)
         x = [x.name for x in self.order]
         x.sort()
         self.say(irc, "The roles are: " + ', '.join(x))
@@ -1463,11 +1473,11 @@ class TestBot(SingleServerIRCBot):
         if nplayers < 10 or nplayers > 13: return None
         roles = []
         #roles += {4: [Ghost()], 2: [Joker()]}.get(randint(0, 15), [])
-#        possible = [Martyr(), Hooker(), Bodyguard(), Inspector(), Sheriff(), Rogue(), Silencer()]
+#       possible = [Martyr(), Hooker(), Bodyguard(), Inspector(), Sheriff(), Rogue(), Silencer()]
 #       for i in xrange(3): idx = randint(0, len(possible)-1); possible[idx:idx+1] = []
-#        roles += possible
+#       roles += possible
         roles += [Hooker()]
-	roles += [Martyr()]
+        roles += [Martyr()]
         roles += [Twin()]*2
         #roles += [Rogue()]
         roles += [Kidnapper() if randint(0, 1) else Jester()]# if randint(0, 1) else Sheriff()]
@@ -1713,6 +1723,7 @@ class TestBot(SingleServerIRCBot):
                 try:
                     getattr(player.group,"check_" + cmd)(self,nick,args,irc)
                 except AttributeError:
+                    traceback.print_exc()
                     irc.notice(nick,"You cannot issue this command.")
             else:
                 irc.notice(nick,"You cannot do anything this night because you are sleeping.")
@@ -1799,7 +1810,7 @@ class TestBot(SingleServerIRCBot):
 #             if cmd == 'accuse':
 #                 if len(args) == 0:
 #                     irc.notice(nick, "Please accuse someone.")
-#                 elif self.players.has_key(args[0]):
+#                 elif args[0] in self.players:
 #                     self.players[nick].vote = args[0]
 #                     self.say(irc, nick + " is accusing " + args[0] + "! " + args[0] + ", you have " + self.time_defend + " seconds to defend yourself.")
 #                 else:
@@ -1826,21 +1837,21 @@ class TestBot(SingleServerIRCBot):
                     Villager().accept(nick, self.players[nick], irc)
                     self.say(irc, nick + " has been resurrected!")
             if nick in self.deadplayers and self.deadplayers[nick].group.role == 'rogue' and self.deadplayers[nick].group.correct == 1:
-                   self.players[nick] = self.deadplayers[nick]
-                   del self.deadplayers[nick]
-                   Rogue().accept(nick, self.players[nick], irc)
-                   getattr(self.players[nick].group,"activate")(self,irc)
-                   self.say(irc, nick + " has been resurrected!")
+                    self.players[nick] = self.deadplayers[nick]
+                    del self.deadplayers[nick]
+                    Rogue().accept(nick, self.players[nick], irc)
+                    getattr(self.players[nick].group,"activate")(self,irc)
+                    self.say(irc, nick + " has been resurrected!")
             elif nick in self.deadplayers and self.deadplayers[nick].group.role == 'phoenix' and self.deadplayers[nick].group.correct == 1:
                     self.deadplayers[nick].dead = 0
                     self.players[nick] = self.deadplayers[nick]
                     del self.deadplayers[nick]
                     Phoenix().accept(nick, self.players[nick], irc)
                     self.say(irc, nick + " has been resurrected!")
-	    if cmd == 'version':
-                   irc.notice(nick,"mafiabot. current version: 4.2")
-	    elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
-                   irc.notice(nick,"You cannot issue a command right now.")
+        if cmd == 'version':
+            irc.notice(nick,"mafiabot. current version: 4.2")
+        elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
+            irc.notice(nick,"You cannot issue a command right now.")
 
     def begin_silence(self,irc):
         self.state = 'silence'
@@ -1870,10 +1881,10 @@ class TestBot(SingleServerIRCBot):
                     del self.deadplayers[nick]
                     Phoenix().accept(nick, self.players[nick], irc)
                     self.say(irc, nick + " has been resurrected!")
-	    if cmd == 'version':
-                   irc.notice(nick,"mafiabot. current version: 4.2")
-	    elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
-                   irc.notice(nick,"You cannot issue a command right now.")
+        if cmd == 'version':
+            irc.notice(nick,"mafiabot. current version: 4.2")
+        elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
+            irc.notice(nick,"You cannot issue a command right now.")
 
     def begin_vote(self,irc):
         self.state = 'vote'
@@ -1888,21 +1899,21 @@ class TestBot(SingleServerIRCBot):
         nick=Nick(nick)
         try:
             if cmd == 'vote':
-                if self.players[nick].vote:
-                    irc.notice(nick, "You have already voted!")
-                elif len(args) == 0:
+                #if self.players[nick].vote:
+                #    irc.notice(nick, "You have already voted!")
+                if len(args) == 0:
                     irc.notice(nick, "Please vote for someone.")
                 elif self.players[nick].group.name == 'ghost':
                     irc.notice(nick, "Sorry, the ghost cannot vote.")
                 elif self.silence == 1:
                     if self.players[nick] == self.silenced:
                         irc.notice(nick, "Sorry, you have been silenced and cannot vote.")
-                    elif self.players.has_key(args[0]):
+                    elif args[0] in self.players:
                         self.players[nick].vote = args[0]
                         self.say(irc, nick + " has voted for " + Nick(args[0]))
                     else:
                         irc.notice(nick, args[0] + " is not playing or has been killed.")
-                elif self.players.has_key(args[0]):
+                elif args[0] in self.players:
                     self.players[nick].vote = args[0]
                     self.say(irc, nick + " has voted for " + Nick(args[0]))
                 else:
@@ -2001,7 +2012,7 @@ class TestBot(SingleServerIRCBot):
         for nick,votes in tally.items():
             if max < votes:
                 max = votes
-        tally = filter(lambda x:x[1]==max,tally.items())
+        tally = list(filter(lambda x:x[1]==max,tally.items()))
         if len(tally) == 1:
             victim = Nick(tally[0][0])
             if self.players[victim].group.name == 'jester':
@@ -2053,7 +2064,7 @@ class TestBot(SingleServerIRCBot):
             else:
                 neutral.append(nick)
         if len(remaining) == 1:
-            winning_team, winners = remaining.items()[0]
+            winning_team, winners = list(remaining.items())[0]
             winners = winners + neutral
             return winning_team, winners
         else:
@@ -2154,7 +2165,7 @@ def main():
     import sys
 
     if len(sys.argv) != 4:
-        print "Usage: mafiabot <server[:port]> <channel> <nickname>"
+        print ("Usage: mafiabot <server[:port]> <channel> <nickname>")
         sys.exit(1)
 
     s = sys.argv[1].split(":", 1)
@@ -2163,7 +2174,7 @@ def main():
         try:
             port = int(s[1])
         except ValueError:
-            print "Error: Erroneous port."
+            print ("Error: Erroneous port.")
             sys.exit(1)
     else:
         port = 6667
