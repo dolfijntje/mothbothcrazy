@@ -1265,7 +1265,8 @@ class TestBot(SingleServerIRCBot):
                         ("mayor",Mayor),
                         ("bpv",bpv),
                         ("devil",devil),
-                        ("missionary",Missionary)
+                        ("missionary",Missionary),
+                        ("arsehole",Arsehole)
         )
         self.role_dict=OrderedDict(self.role_dict)
 
