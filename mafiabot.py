@@ -43,7 +43,7 @@ except NameError:
 # mole/fallguy obv.
 # johnny tightlips: silencer. DONE
 
-#most roles added by internet (pinkmoth) to my knowledge. conversion to Python 3 by penguin344
+#Most roles added by internet (pinkmoth) to my knowledge. Conversion to Python 3 by penguin344. Idea for choose your own role from billymills, implemented by penguin344.
 
 
 
@@ -1229,6 +1229,44 @@ class TestBot(SingleServerIRCBot):
         self.jesterwin = 0
         global witchalive
         witchalive = 1
+        
+        #choose your own role variables
+        self.time_choose = 60
+        self.chosen_roles = None
+        self.role_dict = {
+                        "werewolf":Werewolf, "wolf":Werewolf,
+                        "safeguard":Safeguard, "sg":Safeguard,
+                        "bodyguard":Bodyguard, "bg":Bodyguard,
+                        "hooker":Hooker,
+                        "witch":Witch,
+                        "kidnapper":Kidnapper,
+                        "martyr":Martyr,
+                        "ghost":Ghost,
+                        "inspector":Inspector,
+                        "tracker":Tracker,
+                        "sheriff":Sheriff,
+                        "cop":Cop,
+                        "madcop":Madcop,
+                        "paranoid":Paranoid,
+                        "naive":Naive,
+                        "rogue":Rogue,
+                        "greensorcerer":Greensorcerer, "greensorc":Greensorcerer,
+                        "phoenix":Phoenix,
+                        "missionary":Missionary,
+                        "redsorcerer":Redsorcerer, "redsorc":Redsorcerer, "red sorcerer":Redsorcerer, "red sorc":Redsorcerer,
+                        "bluesorcerer":Bluesorcerer, "bluesorc":Bluesorcerer, "blue sorcerer":Bluesorcerer, "blue sorc":Bluesorcerer,
+                        "silencer":Silencer,
+                        "villagesilencer":Villagesilencer,
+                        "slanderer":Slanderer,
+                        "journalist":Journalist,
+                        "supervillain":Supervillain,
+                        "villager":Villager,
+                        "jester":Jester,
+                        "mayor":Mayor,
+                        "bpv":bpv,
+                        "devil":devil,
+                        "missionary":Missionary
+        }
 
     def on_nicknameinuse(self, c, e):
         c.nick(c.get_nickname() + "_")
@@ -1399,6 +1437,9 @@ class TestBot(SingleServerIRCBot):
         if cmd == 'crazy':
             self.begin_registering(irc)
             self.do_registering(nick, 'join', [], irc)
+        elif cmd == 'chooseyourown' or cmd == 'cyo':
+            self.begin_chooseYourOwnRegistering(irc)
+            self.do_chooseYourOwnRegistering(nick, 'join', [], irc)
         #elif cmd == 'version':
         #    irc.notice(nick,"mafiabot. current version: 4.2")
         elif cmd == 'roles':
@@ -1459,6 +1500,109 @@ class TestBot(SingleServerIRCBot):
             if player.group.role == 'silencer':
                 self.silencer = player
             del roles[r]
+
+        villagers = map(lambda x:x[0], filter(lambda x:x[1].group.role == 'villager', self.players.items()))
+        for nick,player in players.items():
+            if len(player.group.members) > 1:
+                irc.notice(nick,"You are: " + player.group.name + ". " + player.group.description +
+                                " Your partner(s) is/are: " + nick_list(list(filter(lambda x:x!=nick,map(lambda x:x.nick, player.group.members))), " "))
+                if self.silencer and self.silencer.team == player.group.team:
+                    irc.notice(nick,"You also have a silencer working with your team, he is: " + self.silencer.nick)
+            elif player.group.role == 'silencer':
+                for nick2,player2 in players.items():
+                    if player2.group.team == player.group.team and player != player2:
+                        irc.notice(nick, "You are: " + player.group.name + ". " + player.group.description + " Your partners are: "  + nick_list(list(filter(lambda x:x!=nick,map(lambda x:x.nick, player2.group.members))))," ")
+                        break
+            elif player.group.role == 'devil':
+                irc.notice(nick,"You are: " + player.group.name + ", " + player.group.description +
+                                " Here are the roles of everyone: " + ' '.join(map(lambda x:"(" + x[0] + " is " + x[1].group.role + ")", players.items())))
+            elif False: # player.group.role == 'villager' and len(villagers) > 1:
+                v2 = copy(villagers)
+                v2.remove(nick)
+                r = randint(0,len(v2)-1)
+                friend = v2[r]
+                irc.notice(nick,"You are: " + player.group.name + ". " + player.group.description + ". You know that " + friend + " is also a villager.")
+            else:
+                irc.notice(nick,"You are: " + player.group.name + ". " + player.group.description)
+        #self.order.sort(lambda x, y: x.priority.__cmp__(y.priority))
+        self.order.sort(key=lambda x: x.priority)
+        x = [x.name for x in self.order]
+        x.sort()
+        self.say(irc, "The roles are: " + ', '.join(x))
+       # self.say(irc, "The roles are: " + ', '.join(map(lambda x:x.name, self.order)))
+
+        self.begin_night(irc)
+        
+    def begin_chooseYourOwnRegistering(self,irc):
+        self.state = 'chooseYourOwnRegistering'
+        self.say(irc, "A new game of Choose Your Own Role mafia is starting! Type '/msg " + irc.get_nickname() + " join' or !join to join! You have " + str(self.time_join) + " seconds to join.")
+        irc.notice(self.channel, "Join!")
+        self.schedule(self.time_join,bind(self.begin_chooseYourOwnChoosing, irc))
+#         self.timer = Timer(self.time_join,bind(self.initialize_game,irc))
+#         self.timer.start()
+
+    def do_chooseYourOwnRegistering(self,nick,cmd,args,irc):
+        nick=Nick(nick)
+        if cmd == 'join':
+            if nick in self.players:
+                irc.notice(nick, "You already joined!")
+            else:
+                self.players[nick] = Player(nick)
+                self.say(irc, nick + " has joined the game!")
+        elif cmd == 'mafia':
+            if nick in self.players:
+                irc.notice(nick, "The game has already been started and looks like you are already in it!")
+            else:
+                irc.notice(nick, "The game has already been started.")
+                self.players[nick] = Player(nick)
+                self.say(irc, nick + " has joined the game!")  
+        elif cmd == 'version':
+            irc.notice(nick,"mafiabot. current version: 4.2")				
+        elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
+            irc.notice(nick,"You cannot do that now. Type '/msg " + irc.get_nickname() + " join or !join to join the game.")
+    
+    def begin_chooseYourOwnChoosing(self,irc):
+        self.chosen_roles = {n:Villager() for n in self.players}
+        self.state = 'chooseYourOwnChoosing'
+        self.say(irc, "It's time to choose your roles. Type '/msg " + irc.get_nickname() + " choose *rolename*' to choose your role! You have " + str(self.time_choose) + " seconds to choose.") #this still allows for public choosing via !choose in chat, not sure how to fix this
+        irc.notice(self.channel, "Choose!")
+        self.schedule(self.time_choose,bind(self.initialize_chooseYourOwnGame, irc))
+    
+    def do_chooseYourOwnChoosing(self,nick,cmd,args,irc):
+        try:
+            nick=Nick(nick)
+            if cmd == 'choose':
+                if len(args) == 0:
+                    irc.notice(nick, "Please choose a role.") #TODO: see what error happens when a role that isn't in the game tries to be created.
+                elif len(args) == 1: 
+                    if args[0].lower() not in self.role_dict:
+                        irc.notice(nick, args[0] + " is not a role.")
+                    else:
+                        self.chosen_roles[nick]=self.role_dict[args[0].lower()]() #this might not work if the role name has spaces in it because of how input is taken TODO: fix by concatenating all arguments
+                        irc.notice(nick, "You chose "+args[0])
+                else:
+                    role = args[0]
+                    for s in args[1:]:
+                        role += " " + s
+                    if role.lower() not in self.role_dict:
+                        irc.notice(nick, role + " is not a role.")
+                    else:
+                        self.chosen_roles[nick]=self.role_dict[role.lower()]() #this might not work if the role name has spaces in it because of how input is taken TODO: fix by concatenating all arguments
+                        irc.notice(nick, "You chose %s." % role)
+        except KeyError: #multi arg role choices throwing keyerrors
+            irc.notice(nick, "You are not in the game and thus cannot choose a role.")
+            
+    def initialize_chooseYourOwnGame(self,irc):
+        players = self.players
+
+        for nick,player in players.items():
+            role = self.chosen_roles[nick]
+            self.order.append(role)
+            role.accept(nick,player,irc)
+            if player.group.role == 'ghost' or player.group.role == 'joker':
+                self.specialrole = player
+            if player.group.role == 'silencer':
+                self.silencer = player
 
         villagers = map(lambda x:x[0], filter(lambda x:x[1].group.role == 'villager', self.players.items()))
         for nick,player in players.items():
