@@ -11,7 +11,7 @@ from collections import defaultdict
 import subprocess
 import sys
 PY3=sys.version_info > (3,)
-import traceback
+from collections import OrderedDict
 if(not PY3):
 	import urllib2 #this is not currently used, but is kept in. Will break in Python 3, if this module is ever actually used it will need to use the Python 3 version which is split across several modules.
 
@@ -1233,40 +1233,41 @@ class TestBot(SingleServerIRCBot):
         #choose your own role variables
         self.time_choose = 60
         self.chosen_roles = None
-        self.role_dict = {
-                        "werewolf":Werewolf, "wolf":Werewolf,
-                        "safeguard":Safeguard, "sg":Safeguard,
-                        "bodyguard":Bodyguard, "bg":Bodyguard,
-                        "hooker":Hooker,
-                        "witch":Witch,
-                        "kidnapper":Kidnapper,
-                        "martyr":Martyr,
-                        "ghost":Ghost,
-                        "inspector":Inspector,
-                        "tracker":Tracker,
-                        "sheriff":Sheriff,
-                        "cop":Cop,
-                        "madcop":Madcop,
-                        "paranoid":Paranoid,
-                        "naive":Naive,
-                        "rogue":Rogue,
-                        "greensorcerer":Greensorcerer, "greensorc":Greensorcerer,
-                        "phoenix":Phoenix,
-                        "missionary":Missionary,
-                        "redsorcerer":Redsorcerer, "redsorc":Redsorcerer, "red sorcerer":Redsorcerer, "red sorc":Redsorcerer,
-                        "bluesorcerer":Bluesorcerer, "bluesorc":Bluesorcerer, "blue sorcerer":Bluesorcerer, "blue sorc":Bluesorcerer,
-                        "silencer":Silencer,
-                        "villagesilencer":Villagesilencer,
-                        "slanderer":Slanderer,
-                        "journalist":Journalist,
-                        "supervillain":Supervillain,
-                        "villager":Villager,
-                        "jester":Jester,
-                        "mayor":Mayor,
-                        "bpv":bpv,
-                        "devil":devil,
-                        "missionary":Missionary
-        }
+        self.role_dict = (
+                        ("werewolf",Werewolf), ("wolf",Werewolf),
+                        ("safeguard",Safeguard), ("sg",Safeguard),
+                        ("bodyguard",Bodyguard), ("bg",Bodyguard),
+                        ("hooker",Hooker),
+                        ("witch",Witch),
+                        ("kidnapper",Kidnapper),
+                        ("martyr",Martyr),
+                        ("ghost",Ghost),
+                        ("inspector",Inspector),
+                        ("tracker",Tracker),
+                        ("sheriff",Sheriff),
+                        ("cop",Cop),
+                        ("madcop",Madcop),
+                        ("paranoid",Paranoid),
+                        ("naive",Naive),
+                        ("rogue",Rogue),
+                        ("green sorcerer",Greensorcerer), ("green sorc",Greensorcerer), ("greensorcerer",Greensorcerer), ("greensorc",Greensorcerer),
+                        ("phoenix",Phoenix),
+                        ("missionary",Missionary),
+                        ("red sorcerer",Redsorcerer), ("redsorcerer",Redsorcerer), ("redsorc",Redsorcerer), ("red sorc",Redsorcerer),
+                        ("blue sorcerer",Bluesorcerer), ("bluesorcerer",Bluesorcerer), ("bluesorc",Bluesorcerer), ("blue sorc",Bluesorcerer),
+                        ("silencer",Silencer),
+                        ("village silencer",Villagesilencer), ("villagesilencer",Villagesilencer),
+                        ("slanderer",Slanderer),
+                        ("journalist",Journalist),
+                        ("supervillain",Supervillain),
+                        ("villager",Villager),
+                        ("jester",Jester),
+                        ("mayor",Mayor),
+                        ("bpv",bpv),
+                        ("devil",devil),
+                        ("missionary",Missionary)
+        )
+        self.role_dict=OrderedDict(self.role_dict)
 
     def on_nicknameinuse(self, c, e):
         c.nick(c.get_nickname() + "_")
@@ -1556,6 +1557,14 @@ class TestBot(SingleServerIRCBot):
                 irc.notice(nick, "The game has already been started.")
                 self.players[nick] = Player(nick)
                 self.say(irc, nick + " has joined the game!")  
+        elif cmd == 'roles':
+            s = "The roles are: "
+            prevvalue=None
+            for key,value in self.role_dict.items():
+                if value != prevvalue:
+                    prevvalue = value
+                    s += key + ", "
+            irc.notice(nick, s)
         elif cmd == 'version':
             irc.notice(nick,"mafiabot. current version: 4.2")				
         elif cmd != 'witty' and cmd != 'next' and cmd != 'poker' and cmd != 'pokerstop':
@@ -1569,16 +1578,17 @@ class TestBot(SingleServerIRCBot):
         self.schedule(self.time_choose,bind(self.initialize_chooseYourOwnGame, irc))
     
     def do_chooseYourOwnChoosing(self,nick,cmd,args,irc):
-        try:
-            nick=Nick(nick)
-            if cmd == 'choose':
+        
+        nick=Nick(nick)
+        if cmd == 'choose':
+            try:
                 if len(args) == 0:
-                    irc.notice(nick, "Please choose a role.") #TODO: see what error happens when a role that isn't in the game tries to be created.
+                    irc.notice(nick, "Please choose a role.")
                 elif len(args) == 1: 
                     if args[0].lower() not in self.role_dict:
                         irc.notice(nick, args[0] + " is not a role.")
                     else:
-                        self.chosen_roles[nick]=self.role_dict[args[0].lower()]() #this might not work if the role name has spaces in it because of how input is taken TODO: fix by concatenating all arguments
+                        self.chosen_roles[nick]=self.role_dict[args[0].lower()]()
                         irc.notice(nick, "You chose "+args[0])
                 else:
                     role = args[0]
@@ -1587,11 +1597,19 @@ class TestBot(SingleServerIRCBot):
                     if role.lower() not in self.role_dict:
                         irc.notice(nick, role + " is not a role.")
                     else:
-                        self.chosen_roles[nick]=self.role_dict[role.lower()]() #this might not work if the role name has spaces in it because of how input is taken TODO: fix by concatenating all arguments
+                        self.chosen_roles[nick]=self.role_dict[role.lower()]()
                         irc.notice(nick, "You chose %s." % role)
-        except KeyError: #multi arg role choices throwing keyerrors
-            irc.notice(nick, "You are not in the game and thus cannot choose a role.")
-            
+            except KeyError:
+                irc.notice(nick, "You are not in the game and thus cannot choose a role.")
+        elif cmd == 'roles':
+            s = "The roles are: "
+            prevvalue=None
+            for key,value in self.role_dict.items():
+                if value != prevvalue:
+                    prevvalue = value
+                    s += key + ", "
+            irc.notice(nick, s)
+                    
     def initialize_chooseYourOwnGame(self,irc):
         players = self.players
 
@@ -1633,7 +1651,7 @@ class TestBot(SingleServerIRCBot):
         x.sort()
         self.say(irc, "The roles are: " + ', '.join(x))
        # self.say(irc, "The roles are: " + ', '.join(map(lambda x:x.name, self.order)))
-
+        self.chosen_roles=None
         self.begin_night(irc)
 
     def setup1(self, nplayers):
